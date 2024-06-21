@@ -6,8 +6,10 @@ const client = new Discord.Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAG
 const botToken = process.env['TOKEN']
 const cron = require('cron');
 var prefix = ";";
-const Database = require("@replit/database")
-const db = new Database()
+//const Database = require("@replit/database")
+//const db = new Database()
+const { QuickDB } = require('quick.db');
+const db = new QuickDB({filePath: './db.sqlite'})
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 const fs = require('node:fs');
@@ -17,12 +19,15 @@ const apiKey = process.env['API_KEY']
 const https = require('node:https')
 //const JSON = require
 const request = require("request-promise-native");
+//var cards = JSON.parse(fs.readFileSync('pokemoncards.json', 'utf8'));
 
 function between(min, max) {
   return Math.floor(
     Math.random() * (max - min) + min
   )
 }
+
+
 
 async function cardName(id, callback){
  /* axios
@@ -178,19 +183,16 @@ axios
       msg.reply("You do not have permission to perform that action!\n\nPermissions Needed: `MANAGE_SERVER`")
     }
   }
-  if (cmd === "inventory" || cmd === "i") {
-      db.get(msg.author.id + "_inventory").then(value => {
-        if(value !== null)var iNum = value.length;
-        else iNum = 0;
+  /*if (cmd === "inventory" || cmd === "i") {
+      db.get(msg.author.id + "_inventory").then(async value => {
+        if(value !== null) var iNum = value.length;
+        else var iNum = 0;
         var iList = "";
         var iIn = new Array();
         var iInCount = new Array();
 
-        /*if(!Array.isArray(value)){
-          iList = `\n${weaponName(value)}`
-        }
-        else{*/
-        while (iNum > 0) {
+        var cardCount = 0;
+        while (iNum > 0 && cardCount < 1) {
           var arrayNum = iNum - 1;
           if (value[arrayNum] === " " || value[arrayNum] === "" || value[arrayNum] === null) {
             iNum--;
@@ -201,6 +203,7 @@ axios
 
             }
             else {
+              msg.reply("Retrieving card #" + (cardCount + 1))
               iIn = iIn.concat([value[arrayNum]])
               var index = iIn.indexOf(value[arrayNum]);
               //var corr = iInCount[index]
@@ -209,29 +212,42 @@ axios
                   count++;
                 }
               })
-              var name = value[arrayNum];
-              axios
-    .get(`https://${apiKey}@api.pokemontcg.io/v2/cards?q=id:` + value[arrayNum])//name)
-    .then(res => {
-       name = res.data.data[0].name
+              if(typeof value[arrayNum] === 'string') var name = value[arrayNum];
+              else var name = value[arrayNum].name;
+              //axios
+    //.get(`https://${apiKey}@api.pokemontcg.io/v2/cards?q=id:` + value[arrayNum])//name)
+    //.then(res => {
+    fs.readFile('pokemoncards.json', 'utf8', function (err, data) {
+      if (err) throw err;
+      cards = JSON.parse(data); // NOTE: YOU HAVE A CARD OBJECT ALREADY INITIALIZED, SO DO NOT UNCOMMENT
+      var card = cards.find(card => card.id === value[arrayNum]);
+       name = card.name
+      iList = `${iList}\n${name} x${count}`;
+      while(Promise.resolve(iList) == iList){
+        continue;
+      }
+      msg.reply(iList);
     })
               
               iInCount[index] = count
-              iList = `${iList}\n${cardName(name)} x${count}`
-    
+            
             }
             iNum--;
           }
+          cardCount++;
         }
         //}
-       /* const iEmbed = new MessageEmbed()
-          .setColor("#ffff00")
-  .setTitle(`${getUserFromMention(`<@${msg.author.id}>`).username}'s Inventory`)
-          .setDescription(iList)
-        msg.reply({ embeds: [iEmbed] })*/
-        console.log(iList)
+       // const iEmbed = new MessageEmbed()
+        //  .setColor("#ffff00")
+  //.setTitle(`${getUserFromMention(`<@${msg.author.id}>`).username}'s Inventory`)
+        //  .setDescription(iList)
+       // msg.reply({ embeds: [iEmbed] })
+        //console.log(iList)
+        
+        
+        
       })
-    }
+    }*/
   if(cmd === "c" || cmd === "claim"){
     db.get(msg.guild.id + "_spawn").then(async value => {
       if(value !== "" && value !== null){
@@ -244,9 +260,11 @@ axios
   }
         spawn = spawnId;
         db.get(msg.author.id + "_inventory").then(async value => {
-          if(value !== null) var newI = value.concat([spawn])
+          /*if(value !== null) var newI = value.concat([spawn])
           else var newI = ["", spawn]
-          db.set(msg.author.id + "_inventory", newI)
+          db.set(msg.author.id + "_inventory", newI)*/
+          if(value !== null) db.push(msg.author.id + "_inventory", spawn)
+          else db.set(msg.author.id + "_inventory", [spawn])
           db.set(msg.guild.id + "_spawn", "")
 
           axios
@@ -286,7 +304,7 @@ client.on("message", async msg => {
           db.set(msg.guild.id + "_spawnCnt", 0)
       db.get(msg.guild.id + "_channel").then(async value => {
         try{
-      var page = between(1, 62)
+      var page = between(1, 72)
       console.log(page)
 axios
   .get(`https://${apiKey}@api.pokemontcg.io/v2/cards?page=${page.toString()}&pageSize=250`)
